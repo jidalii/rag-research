@@ -1,0 +1,33 @@
+{
+  "source": "https://github.com/StonyBrookNLP/musique (official Google Drive release)",
+  "files": {
+    "musique_ans_v1.0_dev.jsonl": {
+      "split": "dev",
+      "sha256": "15fa63794d18a94ce12411aca6e2327e65b6e83b0b1490efab3f1962e48abf3b",
+      "questions": 2417
+    }
+  },
+  "stats": {
+    "questions": 2417,
+    "paragraphs_per_question": {
+      "17": 2,
+      "18": 5,
+      "19": 9,
+      "20": 2401
+    },
+    "unique_paragraphs_full_split": 21100,
+    "hops": {
+      "2": 1252,
+      "3": 760,
+      "4": 405
+    },
+    "types": {
+      "2hop": 1252,
+      "3hop1": 568,
+      "3hop2": 192,
+      "4hop1": 246,
+      "4hop2": 64,
+      "4hop3": 95
+    }
+  }
+}

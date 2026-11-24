@@ -1,0 +1,86 @@
+# MuSiQue pilot: LLM-only + RAPTOR (+ full-context reference) x GPT / DeepSeek / Claude.
+#   uv run python -m ragbench.run configs/musique_pilot.toml --dry-run
+#   uv run python -m ragbench.run configs/musique_pilot.toml --llm gpt-4o-mini --limit 5
+
+[run]
+name = "musique_pilot"
+output_dir = "results"
+index_dir = "indexes"        # RAPTOR trees are cached here (with their build token cost)
+cache_indexes = true
+max_workers = 8
+seed = 0
+
+[dataset]
+name = "musique"
+path = "datasets/musique/musique_ans_v1.0_dev.jsonl"
+# Shared question list (scripts/prepare_data.py) so every method/teammate uses the
+# same questions. Alternatively drop ids_file and use limit + sample.
+ids_file = "datasets/musique/subsets/pilot_100.txt"   # or main_1000.txt
+# limit = 100
+# sample = "random"          # "first" | "random" (uses run.seed)
+answerable_only = true
+# pooled       : one shared index over the deduplicated paragraphs of all sampled
+#                questions (gold + distractors). Recommended for RAPTOR.
+# per_question : one index per question over its own 20 paragraphs (tiny trees).
+# full         : pool the paragraphs of the whole file, not just the sample.
+corpus = "pooled"
+
+[embedding]                  # shared by every LLM, so retrieval is held fixed
+provider = "local"           # "local" (sentence-transformers) | "openai"
+model = "sentence-transformers/multi-qa-mpnet-base-cos-v1"   # upstream RAPTOR's SBERT
+
+[qa]
+answer_format = "short"      # "short" | "cot" (reason, then 'Answer: ...')
+max_answer_tokens = 256
+
+# ---------------------------------------------------------------- LLMs
+# Prices are USD per 1M tokens and only feed the cost meter; check them before reporting.
+[[llms]]
+label = "gpt-4o-mini"
+provider = "openai"
+model = "gpt-4o-mini"
+temperature = 0.0
+price_input_per_m = 0.15
+price_output_per_m = 0.60
+price_cached_input_per_m = 0.075
+
+[[llms]]
+label = "deepseek-flash"
+provider = "deepseek"
+model = "deepseek-flash"
+temperature = 0.0
+thinking = false             # V4 Flash thinks by default; keep it off for a non-reasoning comparison
+price_input_per_m = 0.15     # off-peak, as used in adaptive-raptor; verify
+price_output_per_m = 0.60
+
+[[llms]]
+label = "claude"
+provider = "anthropic"
+model = "claude-opus-5-5"    # cheaper same-tier peer of gpt-4o-mini: "claude-haiku-5-5" ($0.10/$0.50)
+effort = "low"               # Opus 5.5 always thinks; effort sets how much (thinking tokens are billed as output)
+max_tokens_floor = 4096      # headroom so thinking never starves the visible answer/summary
+price_input_per_m = 4.00
+price_output_per_m = 20.00
+price_cached_input_per_m = 0.20
+
+# ---------------------------------------------------------------- methods
+[[methods]]
+name = "llm_only"            # closed book: no documents, no tools
+
+[[methods]]
+name = "raptor"
+# tree construction (upstream defaults)
+chunk_max_tokens = 100
+summarization_length = 100   # target length; summaries always end on a full sentence
+num_layers = 5
+reduction_dimension = 10
+cluster_threshold = 0.1
+max_length_in_cluster = 3500
+summary_prompt = "complete"  # "complete" (length in prompt) | "upstream" (verbatim prompt)
+# retrieval: upstream collapsed tree
+collapse_tree = true
+top_k = 10
+max_context_tokens = 2000
+
+[[methods]]
+name = "full_context"        # all 20 paragraphs of the question (reference point)

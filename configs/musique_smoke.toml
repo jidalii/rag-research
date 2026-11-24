@@ -1,0 +1,41 @@
+# 3-question end-to-end check per LLM (pick one with --llm).
+#   uv run python -m ragbench.run configs/musique_smoke.toml
+[run]
+name = "musique_smoke"
+max_workers = 3
+
+[dataset]
+name = "musique"
+path = "datasets/musique/musique_ans_v1.0_dev.jsonl"
+limit = 3
+corpus = "pooled"
+
+[[llms]]
+label = "gpt-4o-mini"
+provider = "openai"
+model = "gpt-4o-mini"
+price_input_per_m = 0.15
+price_output_per_m = 0.60
+
+[[methods]]
+name = "llm_only"
+
+[[methods]]
+name = "raptor"
+
+[[llms]]
+label = "deepseek-flash"
+provider = "deepseek"
+model = "deepseek-flash"
+thinking = false
+price_input_per_m = 0.15
+price_output_per_m = 0.60
+
+[[llms]]
+label = "claude"
+provider = "anthropic"
+model = "claude-opus-5-5"
+effort = "low"
+max_tokens_floor = 4096
+price_input_per_m = 4.00
+price_output_per_m = 20.00

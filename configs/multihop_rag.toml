@@ -1,0 +1,32 @@
+# MultiHop-RAG (later). Shared news corpus (609 articles), so corpus = "full".
+# Data: .venv/bin/python scripts/prepare_data.py multihop_rag
+[run]
+name = "multihop_rag_pilot"
+max_workers = 8
+seed = 0
+
+[dataset]
+name = "multihop_rag"
+path = "datasets/multihop_rag"
+corpus_file = "corpus.json"
+queries_file = "MultiHopRAG.json"
+ids_file = "datasets/multihop_rag/subsets/pilot_100.txt"   # or main_1000.txt
+corpus = "full"
+# skip_question_types = ["null_query"]
+
+[qa]
+answer_format = "short"
+
+[[llms]]
+label = "gpt-4o-mini"
+provider = "openai"
+model = "gpt-4o-mini"
+price_input_per_m = 0.15
+price_output_per_m = 0.60
+
+[[methods]]
+name = "llm_only"
+
+[[methods]]
+name = "raptor"
+max_context_tokens = 2000

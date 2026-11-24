@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+results/
+# data files are downloaded by scripts/prepare_data.py; manifests and subsets are shared
+datasets/*/*
+!datasets/*/manifest.json
+!datasets/*/subsets/
+*.egg-info/
+indexes/
+.pytest_cache/

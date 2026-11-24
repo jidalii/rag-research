@@ -1,0 +1,32 @@
+# Offline pipeline check: mock LLM, no API keys, no cost. Results are meaningless.
+#   uv run python -m ragbench.run configs/smoke_mock.toml
+[run]
+name = "smoke_mock"
+index_dir = "indexes"
+max_workers = 4
+
+[dataset]
+name = "musique"
+path = "datasets/musique/musique_ans_v1.0_dev.jsonl"
+limit = 5
+corpus = "pooled"
+
+[[llms]]
+label = "mock"
+provider = "mock"
+model = "mock"
+price_input_per_m = 1.0
+price_output_per_m = 1.0
+
+[[methods]]
+name = "llm_only"
+
+[[methods]]
+name = "raptor"
+num_layers = 2
+
+[[methods]]
+name = "raptor"
+label = "raptor_per_q"
+corpus = "per_question"   # method-level override of dataset.corpus
+num_layers = 2

@@ -1,0 +1,29 @@
+[project]
+name = "ragbench"
+version = "0.1.0"
+description = "Multi-hop RAG benchmark: RAPTOR, GraphRAG, vanilla RAG, LLM-only, full-context"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "openai>=1.40",
+  "anthropic>=0.40",
+  "tiktoken>=0.7",
+  "numpy>=1.26",
+  "scikit-learn>=1.4",
+  "umap-learn>=0.5.6",
+  "sentence-transformers>=3.0",
+  "python-dotenv>=1.0",
+  "tqdm>=4.66",
+  "gdown>=5.0",            # MuSiQue download (Google Drive)
+  # needed by the vendored upstream raptor package imports
+  "faiss-cpu>=1.8",
+  "tenacity>=8.2",
+  "torch>=2.2",
+  "transformers>=4.38",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ragbench*", "raptor*"]
