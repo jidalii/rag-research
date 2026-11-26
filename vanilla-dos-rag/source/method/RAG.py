@@ -10,6 +10,9 @@ from .EmbeddingModels import BaseEmbeddingModel
 from .QAModels import BaseQAModel
 from .utils import (split_text, buildMultipleChoiceQuestionText, get_text_ordered_with_positions_and_gap_indicators, get_text_ordered_with_gap_indicators, get_text_ordered_with_positions)
 
+RETRIEVAL_MODES = ("dos", "vanilla")
+
+
 class Node:
     """
     Represents a node in the RAG system.
@@ -109,6 +112,7 @@ class RAG:
         options = None, #in case of multiple-choice
         top_k: int = 15,
         max_tokens: int = 1500,
+        mode: str = "dos",
         ):
 
         #for MC baking the options into the retrievalQuestion:
@@ -117,7 +121,7 @@ class RAG:
             retrievalQuestion = buildMultipleChoiceQuestionText(question, options)
 
         context, node_information = self.retrieve(
-            query=retrievalQuestion, top_k=top_k, max_tokens=max_tokens
+            query=retrievalQuestion, top_k=top_k, max_tokens=max_tokens, mode=mode
         )
 
         #for multiple choice questions
@@ -130,7 +134,8 @@ class RAG:
         self,
         query: str,
         top_k: int = 10,
-        max_tokens: int = 3500
+        max_tokens: int = 3500,
+        mode: str = "dos"
     ) -> str:
         """
         Retrieve the most relevant nodes for a given query based on cosine similarity.
@@ -139,6 +144,9 @@ class RAG:
             query (str): The input query string.
             top_k (int): Maximum number of nodes to retrieve.
             max_tokens (int): Maximum token limit for the concatenated context.
+            mode (str): Order of the chunks in the context. "dos" keeps the document's
+                original order; "vanilla" puts the most similar chunk first.
+                Both modes select the same chunks.
 
         Returns:
             tuple: A tuple containing the concatenated context (str) and a list of retrieved node IDs (list[int]).
@@ -154,6 +162,9 @@ class RAG:
 
         if not isinstance(max_tokens, int) or max_tokens < 1:
             raise ValueError("max_tokens must be an integer and at least 1")
+
+        if mode not in RETRIEVAL_MODES:
+            raise ValueError(f"mode must be one of {RETRIEVAL_MODES}")
 
 
         # Step 1: Compute the query embedding
@@ -184,8 +195,11 @@ class RAG:
             total_tokens += node_tokens
 
         # Step 5: Concatenate selected node texts
-        sorted_node_list = sorted(selected_nodes, key=lambda node: node.index)
-        context = " \n\n".join(node.text.replace("\n", " ") for node in sorted_node_list)
+        if mode == "dos":
+            ordered_nodes = sorted(selected_nodes, key=lambda node: node.index)
+        else:
+            ordered_nodes = selected_nodes  # already most similar first
+        context = " \n\n".join(node.text.replace("\n", " ") for node in ordered_nodes)
 
         # Step 6: Return the context and node IDs
         retrieved_node_ids = [node.index for node in selected_nodes]

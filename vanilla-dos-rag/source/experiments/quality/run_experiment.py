@@ -1,5 +1,6 @@
+import argparse
 import logging
-from source.method.RAG import RAG
+from source.method.RAG import RAG, RETRIEVAL_MODES
 from source.method.QAModels import OpenAI_QAModel_MultipleChoice
 from source.method.EmbeddingModels import SnowflakeArcticEmbeddingModel
 from source.experiments.utils import save_jsonl, log_error, create_directories, load_json_file, load_jsonl_file, extract_number
@@ -61,7 +62,8 @@ def run_experiment_on_file(file_path, grouped_dataset, qa_model, embedding_model
                     question=question,
                     options=options,
                     top_k=hyperparams["top_k"],
-                    max_tokens=hyperparams["max_tokens"]
+                    max_tokens=hyperparams["max_tokens"],
+                    mode=hyperparams["mode"]
                 )
 
                 if isinstance(answer, str):
@@ -169,9 +171,9 @@ def run_experiment_for_all_files(experiment_identifier, hyperparams):
 
     logging.info(f"Experiment {experiment_identifier} completed.")
 
-def run_experiment_batch():
+def run_experiment_batch(mode="dos"):
     """Run a batch of experiments with varying configurations."""
-    experiment_tag = "dos-rag-quality-dev"
+    experiment_tag = f"{mode}-rag-quality-dev"
 
     experiments = [
         # {
@@ -207,6 +209,7 @@ def run_experiment_batch():
     logging.info(f"Starting Experiment-Batch {experiment_tag} with {len(experiments)} experiments.")
 
     for index, hyperparams in enumerate(experiments):
+        hyperparams["mode"] = mode
         experiment_identifier = f"{experiment_tag}_{index}_top-k-{hyperparams['top_k']}_mt-{hyperparams['max_tokens']}_{OPENAI_MODELSTRING}"
         run_experiment_for_all_files(experiment_identifier, hyperparams)
     
@@ -214,4 +217,8 @@ def run_experiment_batch():
 
 
 if __name__ == "__main__":
-    run_experiment_batch()
+    parser = argparse.ArgumentParser(description="Run DOS RAG or vanilla RAG.")
+    parser.add_argument("--mode", choices=RETRIEVAL_MODES, default="dos",
+                        help="chunk order in the prompt: dos = document order (default), "
+                             "vanilla = most similar first")
+    run_experiment_batch(parser.parse_args().mode)

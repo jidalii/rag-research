@@ -152,6 +152,19 @@ The following table concludes the budget level estimates for all datasets across
 | NarrativeQA |  40k | $63 | $1013 (not executed) | 10.5k questions x 40k tokens = 405M |
 
 
+#### DOS RAG vs. vanilla RAG
+
+All `run_experiment.py` scripts accept `--mode`:
+
+- `--mode dos` (default): retrieved chunks are put back in the document's original order.
+- `--mode vanilla`: retrieved chunks are ordered by similarity, most similar first.
+
+Both modes select the same chunks from the same precreated nodes, so only the order differs. The mode is the prefix of the answer filename (`dos-rag-...` or `vanilla-rag-...`).
+
+```bash
+python -m source.experiments.quality.run_experiment --mode vanilla
+```
+
 #### 📝 Scripts
 
 We provide scripts called `run_experiment.py` under `experiments_source/<dataset>/` to run the experiments on the previosuly created nodes.

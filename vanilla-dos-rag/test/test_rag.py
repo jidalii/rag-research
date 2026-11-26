@@ -314,6 +314,35 @@ class TestRAG(unittest.TestCase):
         self.assertEqual(retrieved_node_ids, [0, 3]) 
 
 
+    def test_retrieve_modes_differ_only_in_order(self):
+        """
+        Test that vanilla and dos modes select the same chunks but order them differently.
+        """
+        # Query that matches the last node best, so similarity order differs from document order
+        query = "Final node with more data for testing."
+        dos_context, dos_ids = self.rag.retrieve(query=query, top_k=3, max_tokens=100, mode="dos")
+        vanilla_context, vanilla_ids = self.rag.retrieve(query=query, top_k=3, max_tokens=100, mode="vanilla")
+
+        self.assertEqual(dos_ids, vanilla_ids)
+        self.assertEqual(vanilla_ids[0], 3)
+
+        def joined(ids):
+            return " \n\n".join(self.rag.nodes[i].text for i in ids)
+
+        self.assertEqual(vanilla_context, joined(vanilla_ids))
+        self.assertEqual(dos_context, joined(sorted(dos_ids)))
+        self.assertNotEqual(dos_context, vanilla_context)
+
+        # dos stays the default
+        self.assertEqual(self.rag.retrieve(query=query, top_k=3, max_tokens=100)[0], dos_context)
+
+    def test_retrieve_invalid_mode(self):
+        """
+        Test that retrieve() raises an error for an unknown mode.
+        """
+        with self.assertRaises(ValueError):
+            self.rag.retrieve(query="test node", mode="other")
+
 
 if __name__ == "__main__":
     unittest.main()
