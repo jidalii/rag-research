@@ -27,6 +27,25 @@ price_output_per_m = 0.60
 [[methods]]
 name = "llm_only"
 
+# vanilla / DOS / slot: same chunks, only their order in the prompt differs.
+[[methods]]
+name = "vanilla_rag"         # retrieved chunks in similarity order
+chunk_max_tokens = 100
+top_k = 10                   # same limits as RAPTOR
+max_context_tokens = 2000
+
+[[methods]]
+name = "dos_rag"             # grouped by document, reading order inside each
+chunk_max_tokens = 100
+top_k = 10                   # same limits as RAPTOR
+max_context_tokens = 2000
+
+[[methods]]
+name = "slot_rag"            # reading order inside each document, positions kept
+chunk_max_tokens = 100
+top_k = 10                   # same limits as RAPTOR
+max_context_tokens = 2000
+
 [[methods]]
 name = "raptor"
 max_context_tokens = 2000

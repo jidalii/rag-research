@@ -1,10 +1,14 @@
 from .base import Method
 from .raptor import Raptor
 from .simple import FullContext, LLMOnly
+from .vanilla_dos_slot import DOSRAG, SlotRAG, VanillaRAG
 
 # name -> class. Teammates: register GraphRAG / vanilla RAG here.
 REGISTRY: dict[str, type[Method]] = {
     LLMOnly.name: LLMOnly,
+    VanillaRAG.name: VanillaRAG,
+    DOSRAG.name: DOSRAG,
+    SlotRAG.name: SlotRAG,
     FullContext.name: FullContext,
     Raptor.name: Raptor,
 }

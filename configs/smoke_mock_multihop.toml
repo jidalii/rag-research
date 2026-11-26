@@ -1,0 +1,31 @@
+# Offline pipeline check on MultiHop-RAG: mock LLM, no API keys, no cost. Results are meaningless.
+#   uv run python -m ragbench.run configs/smoke_mock_multihop.toml
+[run]
+name = "smoke_mock_multihop"
+index_dir = "indexes"
+max_workers = 4
+
+[dataset]
+name = "multihop_rag"
+path = "datasets/multihop_rag"
+limit = 5
+corpus = "full"
+
+[[llms]]
+label = "mock"
+provider = "mock"
+model = "mock"
+price_input_per_m = 1.0
+price_output_per_m = 1.0
+
+[[methods]]
+name = "llm_only"
+
+[[methods]]
+name = "vanilla_rag"         # retrieved chunks in similarity order
+
+[[methods]]
+name = "dos_rag"             # grouped by document, reading order inside each
+
+[[methods]]
+name = "slot_rag"            # reading order inside each document, positions kept

@@ -15,9 +15,3 @@ indexes/
 .ipynb_checkpoints
 .DS_Store
 .owncloudsync.log
-
-# vanilla-dos-rag: config.py can hold API keys; the folders are generated or downloaded
-vanilla-dos-rag/**/config.py
-/vanilla-dos-rag/experiments/
-/vanilla-dos-rag/nltk_data/
-/vanilla-dos-rag/data/
