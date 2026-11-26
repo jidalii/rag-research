@@ -30,3 +30,8 @@ name = "raptor"
 label = "raptor_per_q"
 corpus = "per_question"   # method-level override of dataset.corpus
 num_layers = 2
+
+[[methods]]
+name = "hipporag"             # HippoRAG: OpenIE graph + Personalized PageRank
+synonym_threshold = 0.8
+top_k = 10

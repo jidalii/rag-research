@@ -1,4 +1,5 @@
 from .base import Method
+from .hipporag import HippoRAG
 from .raptor import Raptor
 from .simple import FullContext, LLMOnly
 
@@ -7,6 +8,7 @@ REGISTRY: dict[str, type[Method]] = {
     LLMOnly.name: LLMOnly,
     FullContext.name: FullContext,
     Raptor.name: Raptor,
+    HippoRAG.name: HippoRAG,
 }
 
 

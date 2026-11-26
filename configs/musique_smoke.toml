@@ -23,6 +23,9 @@ name = "llm_only"
 [[methods]]
 name = "raptor"
 
+[[methods]]
+name = "hipporag"
+
 [[llms]]
 label = "deepseek-flash"
 provider = "deepseek"
