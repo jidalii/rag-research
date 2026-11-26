@@ -115,6 +115,38 @@ No method gets tools (no web search or code execution). This matters most for th
 
 **Thinking tokens.** DeepSeek V4 Flash thinks by default. The configs set `thinking = false`, as in adaptive-raptor, where the default left RAPTOR summaries empty. Claude Opus 5.5 always thinks and is controlled with `effort`. Thinking tokens are billed as output and are included in the token counts.
 
+## Vanilla RAG and DOS RAG implementation
+
+`ragbench/methods/vanilla_dos_slot.py` has three methods that put the **same retrieved chunks**
+in the prompt and differ only in their order. A "document" is one corpus passage: a
+paragraph in MuSiQue, a whole article in MultiHop-RAG. For search results
+`A8, B2, C5, A3, B1` (best first; letter = document, number = position in it):
+
+| Method | Rule | Prompt order |
+| --- | --- | --- |
+| `vanilla_rag` | Similarity to the question | `A8 B2 C5 A3 B1` |
+| `dos_rag` | Group by document, best chunk's document first, reading order inside | `A3 A8 B1 B2 C5` |
+| `slot_rag` | Each document keeps its positions; its chunks fill them in reading order | `A3 B1 C5 A8 B2` |
+
+DOS RAG ([Laitenberger et al., EMNLP 2025](https://aclanthology.org/2025.emnlp-main.1656/))
+was published for questions over one long document. Our datasets search many documents
+with no original order between them, so "best chunk first" is a rule we chose. In MuSiQue,
+reading order is only restored inside each short paragraph (`idx` is the position in the
+question's shuffled list, not a source order). `slot_rag` applies reading order without
+grouping documents.
+
+1. **Chunks come from the original DOS RAG splitter** (`split_text` in the same file)
+   on `title: text`, up to about 100 tokens. It splits into sentences with NLTK and keeps
+   punctuation. A few chunks go over the limit, when a long stretch has no `,;:` to split on.
+   One fix: upstream can emit such a stretch ahead of the sentences before it, which breaks
+   reading order. These chunks differ from RAPTOR's leaves, so a comparison with RAPTOR
+   also includes the difference in chunking. NLTK's sentence data downloads on first use.
+2. **Same retrieval limits as RAPTOR:** `top_k=10`, `max_context_tokens=2000`.
+3. **Retrieval recall** counts only documents with a chunk in the prompt.
+4. Each prediction also records `retrieved_chunks` (prompt order) and `differs_from_vanilla`.
+
+Free checks: `configs/smoke_mock.toml` (MuSiQue) and `configs/smoke_mock_multihop.toml`.
+
 ## RAPTOR implementation
 
 `raptor/` is upstream RAPTOR copied verbatim (commit `7da1d48`, see `raptor/UPSTREAM.md`), following the same approach as adaptive-raptor. The adapters live in `ragbench/methods/raptor.py`. The upstream code is used for UMAP+GMM clustering, recursive summarization, `Tree`, and `TreeRetriever` (collapsed tree: `top_k=10`, `max_context_tokens=2000`). Differences from upstream:
@@ -250,7 +282,7 @@ ragbench/
   metrics.py      EM / F1 / answer recall / retrieval recall
   embeddings.py   local SBERT or OpenAI embeddings
   prompts.py      shared QA prompts
-  methods/        llm_only, full_context, raptor  (+ your method)
+  methods/        llm_only, full_context, raptor, vanilla_rag, dos_rag, slot_rag
 raptor/           vendored upstream RAPTOR (do not edit)
 configs/          experiment TOMLs
 scripts/          prepare_data.py (download, verify, subsets)

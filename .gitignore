@@ -10,3 +10,8 @@ datasets/*/*
 *.egg-info/
 indexes/
 .pytest_cache/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints
+.DS_Store
+.owncloudsync.log

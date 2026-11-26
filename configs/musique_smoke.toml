@@ -21,6 +21,15 @@ price_output_per_m = 0.60
 name = "llm_only"
 
 [[methods]]
+name = "vanilla_rag"         # retrieved chunks in similarity order
+
+[[methods]]
+name = "dos_rag"             # grouped by document, reading order inside each
+
+[[methods]]
+name = "slot_rag"            # reading order inside each document, positions kept
+
+[[methods]]
 name = "raptor"
 
 [[methods]]

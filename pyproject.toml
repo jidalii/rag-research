@@ -14,6 +14,7 @@ dependencies = [
   "sentence-transformers>=3.0",
   "python-dotenv>=1.0",
   "tqdm>=4.66",
+  "nltk==3.9.1",           # DOS RAG chunker; other versions split sentences differently
   "gdown>=5.0",            # MuSiQue download (Google Drive)
   # needed by the vendored upstream raptor package imports
   "faiss-cpu>=1.8",
