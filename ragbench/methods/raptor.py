@@ -286,7 +286,8 @@ class Raptor(Method):
         )
         p = self.params
         context, info = retriever.retrieve(
-            ex.question, top_k=p["top_k"], max_tokens=p["max_context_tokens"],
+            # top_k = None: the token budget alone decides how many nodes fit
+            ex.question, top_k=p["top_k"] or 1_000_000, max_tokens=p["max_context_tokens"],
             collapse_tree=p["collapse_tree"], return_layer_information=True,
         )
         node_ids = [r["node_index"] for r in info]

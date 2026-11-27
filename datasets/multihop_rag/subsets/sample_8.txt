@@ -1,0 +1,9 @@
+# multihop_rag subset 'sample_8': n=8 seed=1 stratify=True exclude_types=[]
+mhr_0206
+mhr_0397
+mhr_0471
+mhr_0847
+mhr_1735
+mhr_2213
+mhr_2435
+mhr_2454

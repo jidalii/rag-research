@@ -167,6 +167,7 @@ class VanillaRAG(Method):
     def retrieve(self, question: str, index: ChunkIndex) -> list[int]:
         """Chunk indices, most similar first. Identical for all three methods."""
         query = self.embedder.embed([question])[0]
+        # top_k = None: the token budget alone decides how many chunks fit
         ranking = np.argsort(-(index.emb @ query), kind="stable")[: self.params["top_k"]]
         selected, used = [], 0
         for i in ranking:

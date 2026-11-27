@@ -70,33 +70,44 @@ Make a new one with `scripts/prepare_data.py musique --verify --subset NAME --n 
 
 ## Running experiments
 
-Each run is described by one TOML file. Each `[[llms]]` × `[[methods]]` pair is one experiment.
+Each run is described by one YAML file (TOML still works). Each LLM × method arm is one
+experiment. The setup and the reasons for it are in `docs/experiment_setup.md`.
 
 ```bash
-.venv/bin/python -m ragbench.run configs/smoke_mock.toml                 # offline, free
-.venv/bin/python -m ragbench.run configs/musique_pilot.toml --dry-run    # print plan only
-.venv/bin/python -m ragbench.run configs/musique_smoke.toml --llm deepseek-flash
-.venv/bin/python -m ragbench.run configs/musique_pilot.toml --llm gpt-4o-mini --method raptor --limit 20
+.venv/bin/python -m ragbench.run configs/smoke_mock.yaml                          # offline, free
+.venv/bin/python -m ragbench.run configs/experiments/musique_main.yaml --dry-run  # list the arms
+.venv/bin/python -m ragbench.run configs/experiments/musique_main.yaml \
+    --ids-file datasets/musique/subsets/sample_8.txt --name musique_sample --llm deepseek-flash
+.venv/bin/python -m ragbench.judge results/musique_sample                         # judge verdicts
 ```
+
+| File | Contents |
+| --- | --- |
+| `configs/common/llms.yaml` | the three LLMs (GPT-4o-mini, DeepSeek V4 Flash, local Qwen3 8B), the embedder, the judge |
+| `configs/experiments/musique_main.yaml` | MuSiQue: 17 arms on `main_1000` |
+| `configs/experiments/multihop_rag_main.yaml` | MultiHop-RAG: 15 arms on `main_1000` |
+
+Config features:
+
+- `extends: [configs/common/llms.yaml]` merges shared sections first (dicts merge, lists are replaced).
+- `sweep: {max_context_tokens: [1000, 2000, 4000]}` on a method expands into arms `name@1k`, `name@2k`, `name@4k`.
+- `top_k: null` lets the context budget alone decide how much is retrieved.
+- `run.index_llm: deepseek-flash` makes DeepSeek build every RAPTOR/HippoRAG index once; all readers share it.
+- `llm_overrides: {qwen3-8b: {num_ctx: 40960}}` adjusts a shared LLM for one experiment.
+- A method entry may override `answer_format` / `max_answer_tokens` (e.g. `llm_only_cot`).
+
+**Local Qwen.** `ollama serve` and `ollama pull qwen3:8b` first. Ollama silently cuts prompts
+longer than `num_ctx`, so the client refuses a prompt that might not fit (the question is
+recorded as failed) instead of answering from a truncated context.
 
 Outputs go to `results/<run.name>/`:
 
-- `<dataset>__<method>__<llm>/predictions.jsonl`: one line per question with the prediction, retrieved passage ids, metrics and token usage.
-- `summary.json`: mean metrics, metrics by hop count and question type, index/query tokens and $.
-- `summary.csv`: one row per experiment.
+- `<dataset>__<arm>__<llm>/predictions.jsonl`: one line per question: prediction, retrieved passage ids, metrics (F1/EM, retrieval recall, `all_gold_retrieved`, `fact_recall`), `recall_by_hop`, `context_tokens`, `latency_s`, token usage.
+- `<dataset>__<arm>__<llm>/judge.jsonl`: judge verdicts, after `ragbench.judge`.
+- `summary.json`: means overall and by hop count, question type, gold-retrieved flag and hop position; index/query tokens and $.
+- `summary.csv`: one row per experiment; `config.resolved.yaml`: the config after `extends` and `sweep`.
 
-Runs can be resumed: rerunning the same command skips finished questions and retries failed ones. RAPTOR trees are cached in `indexes/`, and a JSON file next to each tree records the tokens it took to build. The index cost is therefore reported even when the tree comes from the cache.
-
-### Config sections (see `configs/musique_pilot.toml`)
-
-| Section | Keys |
-| --- | --- |
-| `[run]` | `name`, `output_dir`, `index_dir`, `cache_indexes`, `max_workers`, `seed` |
-| `[dataset]` | `name` (`musique` \| `multihop_rag`), `path`, `ids_file`, `limit`, `sample` (`first` \| `random`), `corpus` (`pooled` \| `per_question` \| `full`) |
-| `[embedding]` | `provider` (`local` \| `openai`), `model`. Shared by every LLM. |
-| `[qa]` | `answer_format` (`short` \| `cot`), `max_answer_tokens` |
-| `[[llms]]` | `label`, `provider` (`openai` \| `deepseek` \| `anthropic` \| `mock`), `model`, `temperature`, `thinking`, `effort` (Claude), `max_tokens_floor`, `price_*_per_m` |
-| `[[methods]]` | `name`, optional `label` and `corpus` override, plus method parameters |
+Runs can be resumed: rerunning the same command skips finished questions and retries failed ones. Indexes are cached in `indexes/<dataset>/<method>/<index llm>/`, with a JSON file recording the tokens it took to build them, so index cost is reported even from the cache. If every question of an arm fails with a billing or key error, the remaining arms of that LLM are skipped.
 
 No method gets tools (no web search or code execution). This matters most for the LLM-only baseline.
 

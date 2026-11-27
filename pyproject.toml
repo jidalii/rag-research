@@ -13,6 +13,8 @@ dependencies = [
   "umap-learn>=0.5.6",
   "sentence-transformers>=3.0",
   "python-dotenv>=1.0",
+  "pyyaml>=6.0",           # experiment configs
+  "httpx>=0.27",           # local models through Ollama
   "tqdm>=4.66",
   "nltk==3.9.1",           # DOS RAG chunker; other versions split sentences differently
   "gdown>=5.0",            # MuSiQue download (Google Drive)

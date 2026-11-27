@@ -4,6 +4,7 @@ Supported providers (set `provider` in a [[llms]] table):
   - "openai"    : OpenAI Chat Completions (e.g. gpt-4o-mini)
   - "deepseek"  : DeepSeek, OpenAI-compatible endpoint (https://api.deepseek.com)
   - "anthropic" : Claude via the Anthropic Messages API
+  - "ollama"    : a local model served by Ollama (native /api/chat, e.g. qwen3:8b)
 
 No tools are ever passed to any provider, so web search / code execution are
 disabled for every method (required for the "LLM only" baseline).
@@ -13,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import os
 import threading
+import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
@@ -95,6 +97,9 @@ class LLMConfig:
     price_cached_input_per_m: float | None = None
     max_retries: int = 6
     timeout: float = 120.0
+    seed: int | None = None             # ollama: sampling seed
+    num_ctx: int | None = None          # ollama: context window (default is small!)
+    max_workers: int | None = None      # per-LLM concurrency cap (local models: 1)
     extra: dict = field(default_factory=dict)
 
     @classmethod
@@ -237,6 +242,65 @@ class AnthropicClient(LLMClient):
         return text.strip(), usage, resp.stop_reason == "max_tokens"
 
 
+class PromptTooLong(RuntimeError):
+    """The prompt would not fit in a local model's context window."""
+
+
+class OllamaClient(LLMClient):
+    """Local model through Ollama's native chat API.
+
+    Ollama silently drops the start of a prompt that exceeds `num_ctx`, so the
+    prompt length is checked up front (cl100k count with a safety margin, since the
+    model's own tokenizer is not loaded) and an over-long prompt raises instead.
+    """
+    MARGIN = 1.15
+
+    def __init__(self, cfg: LLMConfig, tracker: UsageTracker):
+        super().__init__(cfg, tracker)
+        import httpx
+        import tiktoken
+        self.url = (cfg.base_url or "http://localhost:11434").rstrip("/") + "/api/chat"
+        self.http = httpx.Client(timeout=cfg.timeout)
+        self.enc = tiktoken.get_encoding("cl100k_base")
+        self.num_ctx = cfg.num_ctx or 8192
+
+    def _generate(self, prompt, system, max_tokens):
+        est = len(self.enc.encode((system or "") + prompt))
+        if est * self.MARGIN + max_tokens > self.num_ctx:
+            raise PromptTooLong(f"~{est} prompt tokens + {max_tokens} output > num_ctx "
+                                f"{self.num_ctx} for {self.cfg.label}")
+        messages = ([{"role": "system", "content": system}] if system else []) + \
+            [{"role": "user", "content": prompt}]
+        options = {"num_ctx": self.num_ctx, "num_predict": max_tokens}
+        if self.cfg.temperature is not None:
+            options["temperature"] = self.cfg.temperature
+        if self.cfg.seed is not None:
+            options["seed"] = self.cfg.seed
+        body = {"model": self.cfg.model, "messages": messages, "stream": False,
+                "options": options}
+        if self.cfg.thinking is not None:
+            body["think"] = self.cfg.thinking
+        body.update(self.cfg.extra)
+        last = None
+        for attempt in range(self.cfg.max_retries + 1):
+            try:
+                r = self.http.post(self.url, json=body)
+                r.raise_for_status()
+                break
+            except Exception as e:  # server restarting, model loading, ...
+                last = e
+                time.sleep(min(30, 2 ** attempt))
+        else:
+            raise last
+        d = r.json()
+        # prompt_eval_count excludes a prefix Ollama reused from its cache, so the
+        # cl100k estimate is the comparable input count; the reported one is kept too.
+        usage = Usage(calls=1, input_tokens=est, output_tokens=d.get("eval_count", 0) or 0,
+                      cached_input_tokens=max(0, est - (d.get("prompt_eval_count") or est)))
+        text = (d.get("message") or {}).get("content", "")
+        return text.strip(), usage, d.get("done_reason") == "length"
+
+
 class MockClient(LLMClient):
     """Offline, deterministic, free. For pipeline tests only, never for results."""
 
@@ -264,6 +328,8 @@ def make_llm(cfg: LLMConfig, tracker: UsageTracker) -> LLMClient:
         return OpenAICompatClient(cfg, tracker)
     if cfg.provider == "anthropic":
         return AnthropicClient(cfg, tracker)
+    if cfg.provider == "ollama":
+        return OllamaClient(cfg, tracker)
     if cfg.provider == "mock":
         return MockClient(cfg, tracker)
     raise ValueError(f"Unknown LLM provider: {cfg.provider!r}")

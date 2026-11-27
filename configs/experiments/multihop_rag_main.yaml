@@ -1,0 +1,41 @@
+# MultiHop-RAG, all arms x all LLMs over the 609-article corpus. DeepSeek builds every index.
+#   .venv/bin/python -m ragbench.run configs/experiments/multihop_rag_main.yaml --dry-run
+extends: [configs/common/llms.yaml]
+
+run:
+  name: multihop_rag_main
+  output_dir: results
+  index_dir: indexes
+  index_llm: deepseek-flash
+  max_workers: 8
+  seed: 0
+
+dataset:
+  name: multihop_rag
+  path: datasets/multihop_rag
+  ids_file: datasets/multihop_rag/subsets/main_1000.txt   # null queries kept, scored apart
+  corpus: full
+
+qa:
+  answer_format: short
+  max_answer_tokens: 256
+
+llm_overrides:
+  qwen3-8b: {num_ctx: 40960}       # full_context is capped at 32k; gold alone can reach 33k
+
+methods:
+  - {name: llm_only}
+  - {name: full_context, max_context_tokens: 32000}   # gold + seeded distractor articles
+  - {name: oracle}
+  - name: vanilla_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: dos_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: raptor
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: hipporag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}

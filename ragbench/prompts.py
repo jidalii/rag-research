@@ -6,8 +6,8 @@ import re
 
 SHORT_RULE = ("Respond with only the final answer as a short phrase (an entity, date, "
               "number, or a few words). Do not explain.")
-COT_RULE = ("Think step by step, then on the last line write 'Answer: ' followed by the "
-            "final answer as a short phrase.")
+COT_RULE = ("Think step by step in a few short sentences, then on the last line write "
+            "'Answer: ' followed by the final answer as a short phrase.")
 
 SYSTEM_CLOSED_BOOK = ("You are answering questions using only your own knowledge. "
                       "If unsure, give your best guess.")
@@ -26,10 +26,9 @@ def qa_prompt(question: str, context: str | None, answer_format: str) -> tuple[s
 def extract_answer(raw: str, answer_format: str) -> str:
     if answer_format == "cot":
         m = re.findall(r"answer\s*:\s*(.+)", raw, flags=re.IGNORECASE)
-        if m:
-            return m[-1].strip().strip("*").strip()
-        lines = [l for l in raw.strip().splitlines() if l.strip()]
-        return lines[-1].strip() if lines else ""
+        # no 'Answer:' line (e.g. reasoning cut off at max_tokens): no answer, rather
+        # than scoring a fragment of the reasoning
+        return m[-1].strip().strip("*").strip() if m else ""
     return raw.strip().splitlines()[0].strip() if raw.strip() else ""
 
 

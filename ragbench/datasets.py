@@ -92,12 +92,19 @@ def load_musique(cfg: dict, seed: int):
             passages.append(pas)
             if p.get("is_supporting"):
                 support.append(pas.pid)
-        hops = len(r.get("question_decomposition", [])) or None
+        decomp = r.get("question_decomposition", [])
+        hops = len(decomp) or None
+        # one gold paragraph per hop; hop position = order in the decomposition
+        steps = [{"hop": i + 1, "question": d["question"], "answer": d["answer"],
+                  "pid": passages[d["paragraph_support_idx"]].pid
+                  if d.get("paragraph_support_idx") is not None else None}
+                 for i, d in enumerate(decomp)]
         return Example(
             qid=r["id"], question=r["question"],
             answers=[r["answer"], *r.get("answer_aliases", [])],
             supporting_pids=support, passages=passages,
-            meta={"hops": hops, "type": r["id"].split("__")[0]},
+            meta={"hops": hops, "type": r["id"].split("__")[0], "decomposition": steps,
+                  "gold_hop": {st["pid"]: st["hop"] for st in steps if st["pid"]}},
         )
 
     examples = [to_example(r) for r in rows]
@@ -129,10 +136,13 @@ def load_multihop_rag(cfg: dict, seed: int):
     examples = []
     for q in query_rows:
         support = sorted({_pid(e["title"]) for e in q.get("evidence_list", [])})
+        facts = [{"pid": _pid(e["title"]), "fact": e["fact"]}
+                 for e in q.get("evidence_list", []) if e.get("fact")]
         examples.append(Example(
             qid=q["id"], question=q["query"], answers=[q["answer"]],
             supporting_pids=support,
-            meta={"type": q.get("question_type"), "hops": len(support) or None},
+            meta={"type": q.get("question_type"), "hops": len(support) or None,
+                  "facts": facts},
         ))
     return examples, corpus
 

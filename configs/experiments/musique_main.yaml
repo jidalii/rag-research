@@ -1,0 +1,45 @@
+# MuSiQue, all arms x all LLMs. DeepSeek builds every index (D0).
+#   .venv/bin/python -m ragbench.run configs/experiments/musique_main.yaml --dry-run
+#   .venv/bin/python -m ragbench.run configs/experiments/musique_main.yaml --llm gpt-4o-mini
+#   .venv/bin/python -m ragbench.judge results/musique_main
+extends: [configs/common/llms.yaml]
+
+run:
+  name: musique_main
+  output_dir: results
+  index_dir: indexes
+  index_llm: deepseek-flash
+  max_workers: 8
+  seed: 0
+
+dataset:
+  name: musique
+  path: datasets/musique/musique_ans_v1.0_dev.jsonl
+  ids_file: datasets/musique/subsets/main_1000.txt
+  answerable_only: true
+  corpus: pooled                   # one index over the de-duplicated paragraphs of the sample
+
+qa:
+  answer_format: short
+  max_answer_tokens: 256
+
+# lists are not merged by `extends`, so the shared arms are repeated here plus the
+# MuSiQue-only H4 arms
+methods:
+  - {name: llm_only}
+  - {name: llm_only, label: llm_only_cot, answer_format: cot, max_answer_tokens: 2048}
+  - {name: llm_only_decomposed}
+  - {name: full_context}           # the question's own 17-20 paragraphs (~2.2k tokens)
+  - {name: oracle}
+  - name: vanilla_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: dos_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: raptor
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: hipporag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}

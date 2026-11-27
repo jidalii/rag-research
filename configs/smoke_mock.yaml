@@ -1,0 +1,8 @@
+# Whole pipeline offline with the mock LLM (free): every arm, 3 MuSiQue questions.
+#   .venv/bin/python -m ragbench.run configs/smoke_mock.yaml
+extends: [configs/experiments/musique_main.yaml]
+run: {name: smoke_mock_yaml, index_llm: mock, max_workers: 2}
+dataset: {ids_file: null, limit: 3}
+llms:
+  - {label: mock, provider: mock, model: mock}
+judge: {provider: mock, model: mock}

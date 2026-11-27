@@ -1,0 +1,42 @@
+# Shared by every experiment (pulled in with `extends`).
+# Prices are USD per 1M tokens and only feed the cost meter; verify before reporting.
+llms:
+  - label: gpt-4o-mini
+    provider: openai
+    model: gpt-4o-mini
+    temperature: 0.0
+    price_input_per_m: 0.15
+    price_output_per_m: 0.60
+    price_cached_input_per_m: 0.075
+
+  - label: deepseek-flash
+    provider: deepseek
+    model: deepseek-flash          # DeepSeek V4 Flash
+    temperature: 0.0
+    thinking: false                # V4 Flash thinks by default; off = non-reasoning reader
+    price_input_per_m: 0.15        # off-peak; verify
+    price_output_per_m: 0.60
+
+  - label: qwen3-8b
+    provider: ollama               # local: `ollama serve`, `ollama pull qwen3:8b`
+    model: "qwen3:8b"              # Q4_K_M, digest 500a1f067a9f
+    temperature: 0.0
+    seed: 0
+    thinking: false                # Qwen3 is hybrid; off = non-reasoning reader
+    num_ctx: 8192                  # Ollama silently cuts longer prompts; raised per dataset
+    max_workers: 1                 # one request at a time on a 16 GB laptop
+    timeout: 900
+
+embedding:                         # shared by every LLM, so retrieval is held fixed
+  provider: local
+  model: sentence-transformers/multi-qa-mpnet-base-cos-v1
+
+# One fixed judge for every run (D2 in docs/experiment_setup.md; placeholder until decided:
+# DeepSeek is also a tested reader, so it may favour its own answers).
+judge:
+  provider: deepseek
+  model: deepseek-flash
+  temperature: 0.0
+  thinking: false
+  price_input_per_m: 0.15          # verify
+  price_output_per_m: 0.60

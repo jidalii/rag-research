@@ -1,7 +1,7 @@
 from .base import Method
 from .hipporag import HippoRAG
 from .raptor import Raptor
-from .simple import FullContext, LLMOnly
+from .simple import FullContext, LLMOnly, LLMOnlyDecomposed, Oracle
 from .vanilla_dos_slot import DOSRAG, SlotRAG, VanillaRAG
 
 # name -> class. Teammates: register GraphRAG / vanilla RAG here.
@@ -13,6 +13,8 @@ REGISTRY: dict[str, type[Method]] = {
     FullContext.name: FullContext,
     Raptor.name: Raptor,
     HippoRAG.name: HippoRAG,
+    Oracle.name: Oracle,
+    LLMOnlyDecomposed.name: LLMOnlyDecomposed,
 }
 
 

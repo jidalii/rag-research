@@ -294,29 +294,38 @@ class HippoRAG(Method):
         top = [p for p in ranked if scores.get(p, 0.0) > 0][: self.params["top_k"]]
         expanded = sorted(p for p, s in scores.items() if s > 0)
 
-        context = self._build_context(index, top)
+        # only passages that actually made it into the context count as retrieved
+        context, top, truncated = self._build_context(index, top)
         pred, raw = self.generate_answer(ex.question, context or None)
         return {
             "prediction": pred,
             "raw": raw,
             "retrieved_pids": top,
             "retrieved_pids_expanded": expanded,
+            "truncated_passage": truncated,
             "num_query_entities": len(q_entities),
             "num_seed_nodes": len(seed_ids),
             "context_tokens": len(self.tokenizer.encode(context)) if context else 0,
         }
 
-    def _build_context(self, index: GraphIndex, pids: list[str]) -> str:
-        # Builds context for answer generation by using highest PPR pids until budget runs out.
+    def _build_context(self, index: GraphIndex, pids: list[str]):
+        """Highest-PPR passages until the token budget runs out. A passage longer than
+        the whole budget (MultiHop-RAG articles) is cut to fit, so the budget holds for
+        every method. Returns (context, pids in the context, truncated pid or None)."""
         budget = self.params["max_context_tokens"]
-        chosen, used = [], 0
+        texts, chosen, used, truncated = [], [], 0, None
         for pid in pids:
             text = index.pid_text.get(pid, "")
             if not text:
                 continue
-            cost = len(self.tokenizer.encode(text))
-            if chosen and used + cost > budget:
+            toks = self.tokenizer.encode(text)
+            if used + len(toks) > budget:
+                if not chosen:  # first passage alone is over budget: keep its start
+                    texts.append(self.tokenizer.decode(toks[:budget]))
+                    chosen.append(pid)
+                    truncated = pid
                 break
-            chosen.append(text)
-            used += cost
-        return "\n\n".join(chosen)
+            texts.append(text)
+            chosen.append(pid)
+            used += len(toks)
+        return "\n\n".join(texts), chosen, truncated
