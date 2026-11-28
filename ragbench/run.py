@@ -370,8 +370,9 @@ def main(argv=None):
     index_llm_cfg = resolve_index_llm(cfg)
     llms = [LLMConfig.from_dict(d) for d in cfg.get("llms", [])]
     methods = cfg.get("methods", [])
-    if args.llm:
-        llms = [l for l in llms if l.label in args.llm]
+    only = args.llm or run.get("llm_labels")   # CLI wins over the config's selection
+    if only:
+        llms = [l for l in llms if l.label in only]
     if args.method:
         methods = [m for m in methods if m.get("label", m["name"]) in args.method]
     if not llms or not methods:

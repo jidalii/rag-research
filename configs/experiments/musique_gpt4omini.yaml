@@ -1,0 +1,35 @@
+# MuSiQue main run, reader = GPT-4o-mini only. DeepSeek builds every index (run.index_llm);
+# indexes are cached in indexes/ and shared with the other readers.
+#
+#   .venv/bin/python -u -m ragbench.run configs/experiments/musique_gpt4omini.yaml --dry-run
+#   .venv/bin/python -u -m ragbench.run configs/experiments/musique_gpt4omini.yaml
+#   .venv/bin/python -u -m ragbench.judge results/musique_gpt4omini
+#
+# Run the DeepSeek file first: it builds the indexes. Starting both at once would build
+# each index twice.
+extends: [musique_main.yaml]
+
+run:
+  name: musique_gpt4omini
+  llm_labels: [gpt-4o-mini]
+
+# HippoRAG is left out until its synonym step is fixed: on main_1000 (~100k entity
+# nodes) the full similarity matrix needs ~40 GB. Re-enable the block below after that.
+methods:
+  - {name: llm_only}
+  - {name: llm_only, label: llm_only_cot, answer_format: cot, max_answer_tokens: 2048}
+  - {name: llm_only_decomposed}
+  - {name: full_context}
+  - {name: oracle}
+  - name: vanilla_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: dos_rag
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  - name: raptor
+    top_k: null
+    sweep: {max_context_tokens: [1000, 2000, 4000]}
+  # - name: hipporag
+  #   top_k: null
+  #   sweep: {max_context_tokens: [1000, 2000, 4000]}
