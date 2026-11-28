@@ -90,6 +90,18 @@ def _sum_usage(dicts) -> dict:
     return {p: asdict(u) for p, u in tot.items()}
 
 
+class _LazyLLM:
+    """Builds the real client the first time it is used."""
+
+    def __init__(self, cfg, tracker):
+        self._cfg, self._tracker, self._client = cfg, tracker, None
+
+    def __getattr__(self, name):
+        if self._client is None:
+            self._client = make_llm(self._cfg, self._tracker)
+        return getattr(self._client, name)
+
+
 def _mean(xs):
     xs = [x for x in xs if x is not None]
     return round(sum(xs) / len(xs), 4) if xs else None
@@ -194,7 +206,8 @@ def run_one(cfg: dict, llm_cfg: LLMConfig, mcfg: dict, examples, corpus, embedde
     index_usage, index_stats, cache_hits = [], [], 0
     shared_index, per_q_index = None, {}
     if Method.needs_index:
-        method.llm = make_llm(builder_cfg, idx_tracker) if index_llm_cfg else llm
+        # created on first use, so loading a cached index needs no index_llm API key
+        method.llm = _LazyLLM(builder_cfg, idx_tracker) if index_llm_cfg else llm
         cache_dir = (Path(cfg["run"].get("index_dir", "indexes")) / ds_cfg["name"] / mname
                      / builder_cfg.label)
         key_parts = {"method": mname, "params": method.index_params(),

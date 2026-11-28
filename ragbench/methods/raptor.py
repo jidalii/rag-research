@@ -68,10 +68,24 @@ def _make_summarizer(llm, params: dict):
 
     class Summarizer(BaseSummarizationModel):
         def __init__(self):
-            self.stats = {"summaries": 0, "hit_limit": 0, "trimmed": 0, "retried": 0}
+            self.stats = {"summaries": 0, "hit_limit": 0, "trimmed": 0, "retried": 0,
+                          "failed": 0}
+            self.first_error = None
             self._lock = threading.Lock()
 
         def summarize(self, context, max_tokens=150):
+            # Upstream runs this in a thread pool and never reads the futures, so an
+            # exception here vanishes and the cluster silently gets no summary. Count
+            # failures so build_index can refuse to return (and cache) a broken tree.
+            try:
+                return self._summarize(context, max_tokens)
+            except Exception as e:
+                with self._lock:
+                    self.stats["failed"] += 1
+                    self.first_error = self.first_error or repr(e)
+                raise
+
+        def _summarize(self, context, max_tokens):
             # max_tokens is upstream's summarization_length: a length *target*
             words = max(20, int(max_tokens * 0.75))
             prompt = template.format(context=context, words=words)
@@ -262,6 +276,10 @@ class Raptor(Method):
             warnings.filterwarnings("ignore")
             tree = builder.build_from_chunks(chunks)
 
+        if summarizer.stats["failed"]:
+            raise RuntimeError(f"RAPTOR: {summarizer.stats['failed']} summaries failed, so the "
+                               f"tree is incomplete and is not cached. First error: "
+                               f"{summarizer.first_error}")
         layer_of = reverse_mapping(tree.layer_to_nodes)
         summary_nodes = [n for l, ns in tree.layer_to_nodes.items() if l > 0 for n in ns]
         stats = {
